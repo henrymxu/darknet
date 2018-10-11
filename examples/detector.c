@@ -1,7 +1,13 @@
 #include "darknet.h"
+#include <math.h>
+
+#include <libgen.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 static int coco_ids[] = {1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,27,28,31,32,33,34,35,36,37,38,39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,67,70,72,73,74,75,76,77,78,79,80,81,82,84,85,86,87,88,89,90};
-
+void save_predictions(char* results, char* resultpath, int newFile);
+void save_predicted_image(image im, char* imagepath);
 
 void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, int ngpus, int clear)
 {
@@ -559,7 +565,7 @@ void validate_detector_recall(char *cfgfile, char *weightfile)
 }
 
 
-void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh, float hier_thresh, char *outfile, int fullscreen)
+void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh, float hier_thresh, char *outfile, char *resultfile, int fullscreen)
 {
     list *options = read_data_cfg(datacfg);
     char *name_list = option_find_str(options, "names", "data/names.list");
@@ -573,6 +579,10 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
     char buff[256];
     char *input = buff;
     float nms=.45;
+    int imageIndex = 0;
+    if (resultfile) {
+        save_predictions("[\n", resultfile, 1);
+    }
     while(1){
         if(filename){
             strncpy(input, filename, 256);
@@ -580,7 +590,12 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             printf("Enter Image Path: ");
             fflush(stdout);
             input = fgets(input, 256, stdin);
-            if(!input) return;
+            if(!input) {
+                if (resultfile) {
+                    save_predictions("\n]", resultfile, 0);
+                }
+                return;
+            }
             strtok(input, "\n");
         }
         image im = load_image_color(input,0,0);
@@ -591,7 +606,6 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         //resize_network(net, sized.w, sized.h);
         layer l = net->layers[net->n-1];
 
-
         float *X = sized.data;
         time=what_time_is_it_now();
         network_predict(net, X);
@@ -601,12 +615,41 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         //printf("%d\n", nboxes);
         //if (nms) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
         if (nms) do_nms_sort(dets, nboxes, l.classes, nms);
-        draw_detections(im, dets, nboxes, thresh, names, alphabet, l.classes);
-        free_detections(dets, nboxes);
-        if(outfile){
-            save_image(im, outfile);
+        char* resultAsString = draw_detections(im, dets, nboxes, thresh, names, alphabet, l.classes);
+        char* detectionsAsString = malloc(1024 * sizeof(char));
+        sprintf(detectionsAsString, "\t\"Detections\": \n%s", resultAsString);
+
+        char inputAsString[80] = {0};
+        sprintf(inputAsString, "\t\"Path\": \"%s\"", input);
+
+        char totalBoxesAsString[16] = {0};
+        sprintf(totalBoxesAsString, "\t\"Total\": %d", nboxes);
+
+        char *completeImageResultAsString = malloc(1024 * sizeof(char));
+        if (imageIndex == 0) {
+            sprintf(completeImageResultAsString, "{\n%s,\n%s,\n%s\n}", inputAsString, totalBoxesAsString, detectionsAsString);
+        } else {
+            sprintf(completeImageResultAsString, ",\n{\n%s,\n%s,\n%s\n}", inputAsString, totalBoxesAsString, detectionsAsString);
         }
-        else{
+        imageIndex++;
+        if (resultfile) {
+            save_predictions(completeImageResultAsString, resultfile, 0);
+        }
+
+        free(resultAsString);
+        resultAsString = NULL;
+        free(detectionsAsString);
+        detectionsAsString = NULL;
+        free(completeImageResultAsString);
+        completeImageResultAsString = NULL;
+
+        free_detections(dets, nboxes);
+
+        if (outfile){
+            save_image(im, outfile);
+        } else if (resultfile) {
+            save_predicted_image(im, input);
+        } else {
             save_image(im, "predictions");
 #ifdef OPENCV
             make_window("predictions", 512, 512, 0);
@@ -616,8 +659,40 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
 
         free_image(im);
         free_image(sized);
-        if (filename) break;
+        if (filename) {
+            if (resultfile) {
+                save_predictions("\n]", resultfile, 0);
+            }
+            break;
+        }
     }
+}
+
+void save_predicted_image(image im, char* imagepath) {
+    char* base = basename(imagepath);
+    char* dir = dirname(imagepath);
+    base[strlen(base) - 4] = '\0'; //Remove file extension
+    char filename[256];
+    char dirname[256];
+    sprintf(dirname, "%s/predictions", dir);
+    sprintf(filename, "%s/%s", dirname, base);
+    mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    save_image(im, filename);
+}
+
+void save_predictions(char* results, char* resultpath, int newFile) {
+    FILE *f;
+    if (newFile == 0) {
+        f = fopen(resultpath, "a");
+    } else {
+        f = fopen(resultpath, "w");
+    }
+    if (f == NULL) {
+        printf("Error opening file!\n %s", resultpath);
+        exit(1);
+    }
+    fprintf(f, "%s", results);
+    fclose(f);
 }
 
 /*
@@ -833,7 +908,7 @@ void run_detector(int argc, char **argv)
     char *cfg = argv[4];
     char *weights = (argc > 5) ? argv[5] : 0;
     char *filename = (argc > 6) ? argv[6]: 0;
-    if(0==strcmp(argv[2], "test")) test_detector(datacfg, cfg, weights, filename, thresh, hier_thresh, outfile, fullscreen);
+    if(0==strcmp(argv[2], "test")) test_detector(datacfg, cfg, weights, filename, thresh, hier_thresh, outfile, NULL, fullscreen);
     else if(0==strcmp(argv[2], "train")) train_detector(datacfg, cfg, weights, gpus, ngpus, clear);
     else if(0==strcmp(argv[2], "valid")) validate_detector(datacfg, cfg, weights, outfile);
     else if(0==strcmp(argv[2], "valid2")) validate_detector_flip(datacfg, cfg, weights, outfile);

@@ -236,13 +236,21 @@ image **load_alphabet()
     return alphabets;
 }
 
-void draw_detections(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes)
+char* draw_detections(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes)
 {
     int i,j;
 
+    char * allDetectionsAsString = malloc(2048 * sizeof(char));
+
+    strcat(allDetectionsAsString, "[\n");
+    int detectionIndex = 0;
     for(i = 0; i < num; ++i){
-        char labelstr[4096] = {0};
+        char labelstr[100] = {0};
         int class = -1;
+
+        int highestConfidence = 0;
+        char *imageLabel;
+
         for(j = 0; j < classes; ++j){
             if (dets[i].prob[j] > thresh){
                 if (class < 0) {
@@ -251,6 +259,10 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
                 } else {
                     strcat(labelstr, ", ");
                     strcat(labelstr, names[j]);
+                }
+                if (dets[i].prob[j] * 100 > highestConfidence) {
+                    highestConfidence = dets[i].prob[j] * 100;
+                    imageLabel = names[j];
                 }
                 printf("%s: %.0f%%\n", names[j], dets[i].prob[j]*100);
             }
@@ -290,6 +302,30 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
             if(top < 0) top = 0;
             if(bot > im.h-1) bot = im.h-1;
 
+            char *labelAsString = malloc(sizeof(imageLabel) + 14 * sizeof(char));
+            sprintf(labelAsString, "\t\"Class\": \"%s\"", imageLabel);
+
+            char boxAsString[30] = {0};
+            sprintf(boxAsString, "\t\"Box\": [%d, %d, %d, %d]", left, top, right, bot);
+
+            char confidenceAsString[30] = {0};
+            sprintf(confidenceAsString, "\t\"Confidence\": %d", highestConfidence);
+
+            char *completeDetectionAsString = malloc(sizeof(labelAsString) + 80 * sizeof(char));
+            if (detectionIndex == 0) {
+                sprintf(completeDetectionAsString, "{\n%s,\n%s,\n%s\n}", labelAsString, boxAsString, confidenceAsString);
+            } else {
+                sprintf(completeDetectionAsString, ",\n{\n%s,\n%s,\n%s\n}", labelAsString, boxAsString, confidenceAsString);
+            }
+
+            strcat(allDetectionsAsString, completeDetectionAsString);
+            detectionIndex++;
+
+            free(labelAsString);
+            free(completeDetectionAsString);
+            labelAsString = NULL;
+            completeDetectionAsString = NULL;
+
             draw_box_width(im, left, top, right, bot, width, red, green, blue);
             if (alphabet) {
                 image label = get_label(alphabet, labelstr, (im.h*.03));
@@ -307,6 +343,20 @@ void draw_detections(image im, detection *dets, int num, float thresh, char **na
             }
         }
     }
+    strcat(allDetectionsAsString, "\n]");
+    return allDetectionsAsString;
+}
+
+void writeToFile(const char *text, const char *fileName)
+{
+    FILE *f = fopen(fileName, "w");
+    if (f == NULL)
+    {
+        printf("Error opening file!\n %s", fileName);
+        exit(1);
+    }
+    fprintf(f, "%s", text);
+    fclose(f);
 }
 
 void transpose_image(image im)
