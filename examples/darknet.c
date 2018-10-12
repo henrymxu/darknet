@@ -497,8 +497,8 @@ int main(int argc, char **argv)
         test_resize(argv[2]);
     } else if (0 == strcmp(argv[1], "validate")){
         float thresh = find_float_arg(argc, argv, "-thresh", .5);
-        char *filename = (argc > 4) ? argv[4]: 0;
-        char *resultsfile = find_char_arg(argc, argv, "-results", 0);
+        char *resultsfile = (argc > 4) ? argv[4]: 0;
+        char *filename = (argc > 5) ? argv[5]: 0;
         char *outfile = find_char_arg(argc, argv, "-out", 0);
         int fullscreen = find_arg(argc, argv, "-fullscreen");
         test_detector("cfg/coco.data", argv[2], argv[3], filename, thresh, .5, outfile, resultsfile, fullscreen);

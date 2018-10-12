@@ -581,7 +581,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
     float nms=.45;
     int imageIndex = 0;
     if (resultfile) {
-        save_predictions("[\n", resultfile, 1);
+        save_predictions("[\n", resultfile, 1); // JSON Array Begin
     }
     while(1){
         if(filename){
@@ -590,9 +590,9 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             printf("Enter Image Path: ");
             fflush(stdout);
             input = fgets(input, 256, stdin);
-            if(!input) {
+            if(!input || strlen(input) <= 2) {
                 if (resultfile) {
-                    save_predictions("\n]", resultfile, 0);
+                    save_predictions("\n]", resultfile, 0); // JSON Array End
                 }
                 return;
             }
@@ -615,8 +615,9 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         //printf("%d\n", nboxes);
         //if (nms) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
         if (nms) do_nms_sort(dets, nboxes, l.classes, nms);
+
         char* resultAsString = draw_detections(im, dets, nboxes, thresh, names, alphabet, l.classes);
-        char* detectionsAsString = malloc(1024 * sizeof(char));
+        char* detectionsAsString = malloc((strlen(resultAsString) + 16) * sizeof(char));
         sprintf(detectionsAsString, "\t\"Detections\": \n%s", resultAsString);
 
         char inputAsString[80] = {0};
@@ -625,7 +626,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         char totalBoxesAsString[16] = {0};
         sprintf(totalBoxesAsString, "\t\"Total\": %d", nboxes);
 
-        char *completeImageResultAsString = malloc(1024 * sizeof(char));
+        char *completeImageResultAsString = malloc((strlen(detectionsAsString) + strlen(inputAsString) + strlen(totalBoxesAsString)) * sizeof(char));
         if (imageIndex == 0) {
             sprintf(completeImageResultAsString, "{\n%s,\n%s,\n%s\n}", inputAsString, totalBoxesAsString, detectionsAsString);
         } else {
@@ -661,7 +662,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         free_image(sized);
         if (filename) {
             if (resultfile) {
-                save_predictions("\n]", resultfile, 0);
+                save_predictions("\n]", resultfile, 0); // JSON Array End
             }
             break;
         }

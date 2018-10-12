@@ -240,9 +240,11 @@ char* draw_detections(image im, detection *dets, int num, float thresh, char **n
 {
     int i,j;
 
-    char * allDetectionsAsString = malloc(2048 * sizeof(char));
+    char * allDetectionsAsString = malloc(256 * sizeof(char));
+    double allocated = 256;
+    double needed = 4; // Minimum characters (JSON array begin and end)
 
-    strcat(allDetectionsAsString, "[\n");
+    strcat(allDetectionsAsString, "[\n"); // JSON array begin
     int detectionIndex = 0;
     for(i = 0; i < num; ++i){
         char labelstr[100] = {0};
@@ -260,6 +262,7 @@ char* draw_detections(image im, detection *dets, int num, float thresh, char **n
                     strcat(labelstr, ", ");
                     strcat(labelstr, names[j]);
                 }
+                // If multiple detections on the same object, only take the most confident one
                 if (dets[i].prob[j] * 100 > highestConfidence) {
                     highestConfidence = dets[i].prob[j] * 100;
                     imageLabel = names[j];
@@ -302,7 +305,7 @@ char* draw_detections(image im, detection *dets, int num, float thresh, char **n
             if(top < 0) top = 0;
             if(bot > im.h-1) bot = im.h-1;
 
-            char *labelAsString = malloc(sizeof(imageLabel) + 14 * sizeof(char));
+            char *labelAsString = malloc((strlen(imageLabel) + 14) * sizeof(char));
             sprintf(labelAsString, "\t\"Class\": \"%s\"", imageLabel);
 
             char boxAsString[30] = {0};
@@ -311,11 +314,24 @@ char* draw_detections(image im, detection *dets, int num, float thresh, char **n
             char confidenceAsString[30] = {0};
             sprintf(confidenceAsString, "\t\"Confidence\": %d", highestConfidence);
 
-            char *completeDetectionAsString = malloc(sizeof(labelAsString) + 80 * sizeof(char));
+            char *completeDetectionAsString = malloc((strlen(labelAsString) + 80) * sizeof(char));
             if (detectionIndex == 0) {
                 sprintf(completeDetectionAsString, "{\n%s,\n%s,\n%s\n}", labelAsString, boxAsString, confidenceAsString);
             } else {
                 sprintf(completeDetectionAsString, ",\n{\n%s,\n%s,\n%s\n}", labelAsString, boxAsString, confidenceAsString);
+            }
+
+            needed += strlen(completeDetectionAsString);
+            if (needed >= allocated) {
+                void *temp = realloc(allDetectionsAsString, allocated + 256);
+                if (temp != NULL) {
+                    allDetectionsAsString = temp; // the new pointer
+                    allocated += 256; // the new size
+                } else {
+                    // oops!
+                    // string still points to the memory
+                    printf("Something went wrong\n");
+                }
             }
 
             strcat(allDetectionsAsString, completeDetectionAsString);
@@ -343,7 +359,7 @@ char* draw_detections(image im, detection *dets, int num, float thresh, char **n
             }
         }
     }
-    strcat(allDetectionsAsString, "\n]");
+    strcat(allDetectionsAsString, "\n]"); // JSON array end
     return allDetectionsAsString;
 }
 
