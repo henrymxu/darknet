@@ -617,16 +617,17 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         if (nms) do_nms_sort(dets, nboxes, l.classes, nms);
 
         char* resultAsString = draw_detections(im, dets, nboxes, thresh, names, alphabet, l.classes);
-        char* detectionsAsString = malloc((strlen(resultAsString) + 16) * sizeof(char));
+        printf("\n");
+        char* detectionsAsString = malloc((strlen(resultAsString) + 20) * sizeof(char));
         sprintf(detectionsAsString, "\t\"Detections\": \n%s", resultAsString);
 
-        char inputAsString[80] = {0};
+        char inputAsString[256] = {0};
         sprintf(inputAsString, "\t\"Path\": \"%s\"", input);
 
-        char totalBoxesAsString[16] = {0};
+        char totalBoxesAsString[20] = {0};
         sprintf(totalBoxesAsString, "\t\"Total\": %d", nboxes);
 
-        char *completeImageResultAsString = malloc((strlen(detectionsAsString) + strlen(inputAsString) + strlen(totalBoxesAsString)) * sizeof(char));
+        char *completeImageResultAsString = malloc((strlen(detectionsAsString) + strlen(inputAsString) + strlen(totalBoxesAsString) + 10) * sizeof(char));
         if (imageIndex == 0) {
             sprintf(completeImageResultAsString, "{\n%s,\n%s,\n%s\n}", inputAsString, totalBoxesAsString, detectionsAsString);
         } else {
@@ -638,10 +639,11 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         }
 
         free(resultAsString);
-        resultAsString = NULL;
         free(detectionsAsString);
-        detectionsAsString = NULL;
         free(completeImageResultAsString);
+
+        resultAsString = NULL;
+        detectionsAsString = NULL;
         completeImageResultAsString = NULL;
 
         free_detections(dets, nboxes);

@@ -239,7 +239,6 @@ image **load_alphabet()
 char* draw_detections(image im, detection *dets, int num, float thresh, char **names, image **alphabet, int classes)
 {
     int i,j;
-
     char * allDetectionsAsString = malloc(256 * sizeof(char));
     double allocated = 256;
     double needed = 4; // Minimum characters (JSON array begin and end)
@@ -267,7 +266,7 @@ char* draw_detections(image im, detection *dets, int num, float thresh, char **n
                     highestConfidence = dets[i].prob[j] * 100;
                     imageLabel = names[j];
                 }
-                printf("%s: %.0f%%\n", names[j], dets[i].prob[j]*100);
+                printf("%s: %.0f%%\t", names[j], dets[i].prob[j]*100);
             }
         }
         if(class >= 0){
@@ -305,28 +304,29 @@ char* draw_detections(image im, detection *dets, int num, float thresh, char **n
             if(top < 0) top = 0;
             if(bot > im.h-1) bot = im.h-1;
 
-            char *labelAsString = malloc((strlen(imageLabel) + 14) * sizeof(char));
+            char *labelAsString = malloc((strlen(imageLabel) + 20) * sizeof(char));
             sprintf(labelAsString, "\t\"Class\": \"%s\"", imageLabel);
 
-            char boxAsString[30] = {0};
+            char boxAsString[40] = {0};
             sprintf(boxAsString, "\t\"Box\": [%d, %d, %d, %d]", left, top, right, bot);
 
-            char confidenceAsString[30] = {0};
+            char confidenceAsString[40] = {0};
             sprintf(confidenceAsString, "\t\"Confidence\": %d", highestConfidence);
 
-            char *completeDetectionAsString = malloc((strlen(labelAsString) + 80) * sizeof(char));
+            char *completeDetectionAsString = malloc((strlen(labelAsString) + 100) * sizeof(char));
             if (detectionIndex == 0) {
                 sprintf(completeDetectionAsString, "{\n%s,\n%s,\n%s\n}", labelAsString, boxAsString, confidenceAsString);
             } else {
                 sprintf(completeDetectionAsString, ",\n{\n%s,\n%s,\n%s\n}", labelAsString, boxAsString, confidenceAsString);
             }
 
-            needed += strlen(completeDetectionAsString);
+            needed += strlen(completeDetectionAsString) + 10;
             if (needed >= allocated) {
                 void *temp = realloc(allDetectionsAsString, allocated + 256);
                 if (temp != NULL) {
                     allDetectionsAsString = temp; // the new pointer
                     allocated += 256; // the new size
+                    temp = NULL;
                 } else {
                     // oops!
                     // string still points to the memory
