@@ -627,11 +627,15 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         char totalBoxesAsString[20] = {0};
         sprintf(totalBoxesAsString, "\t\"Total\": %d", nboxes);
 
-        char *completeImageResultAsString = malloc((strlen(detectionsAsString) + strlen(inputAsString) + strlen(totalBoxesAsString) + 10) * sizeof(char));
+        char imageSizeAsString[30] = {0};
+        sprintf(imageSizeAsString, "\t\"Size\": [%d, %d]", im.w, im.h);
+
+        char *completeImageResultAsString = malloc((strlen(detectionsAsString) + strlen(inputAsString) + strlen(totalBoxesAsString)
+                + strlen(imageSizeAsString) + 16) * sizeof(char));
         if (imageIndex == 0) {
-            sprintf(completeImageResultAsString, "{\n%s,\n%s,\n%s\n}", inputAsString, totalBoxesAsString, detectionsAsString);
+            sprintf(completeImageResultAsString, "{\n%s,\n%s,\n%s,\n%s\n}", inputAsString, totalBoxesAsString, imageSizeAsString, detectionsAsString);
         } else {
-            sprintf(completeImageResultAsString, ",\n{\n%s,\n%s,\n%s\n}", inputAsString, totalBoxesAsString, detectionsAsString);
+            sprintf(completeImageResultAsString, ",\n{\n%s,\n%s,\n%s,\n%s\n}", inputAsString, totalBoxesAsString, imageSizeAsString, detectionsAsString);
         }
         imageIndex++;
         if (resultfile) {

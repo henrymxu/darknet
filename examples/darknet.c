@@ -493,7 +493,7 @@ int main(int argc, char **argv)
         visualize(argv[2], (argc > 3) ? argv[3] : 0);
     } else if (0 == strcmp(argv[1], "mkimg")){
         mkimg(argv[2], argv[3], atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
-    } else if (0 == strcmp(argv[1], "imtest")) {
+    } else if (0 == strcmp(argv[1], "imtest")){
         test_resize(argv[2]);
     } else if (0 == strcmp(argv[1], "validate")){
         float thresh = find_float_arg(argc, argv, "-thresh", .5);
