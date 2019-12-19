@@ -407,18 +407,6 @@ cJSON* draw_and_save_detections(image im, detection *dets, int num, float thresh
     return result;
 }
 
-void writeToFile(const char *text, const char *fileName)
-{
-    FILE *f = fopen(fileName, "w");
-    if (f == NULL)
-    {
-        printf("Error opening file!\n %s", fileName);
-        exit(1);
-    }
-    fprintf(f, "%s", text);
-    fclose(f);
-}
-
 void transpose_image(image im)
 {
     assert(im.w == im.h);

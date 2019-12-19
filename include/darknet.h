@@ -513,12 +513,6 @@ typedef struct {
     float *data;
 } image;
 
-typedef struct {
-    int confidence;
-    int *box;
-    char *label;
-} imageResult;
-
 typedef struct{
     float x, y, w, h;
 } box;
